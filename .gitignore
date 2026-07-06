@@ -2,3 +2,5 @@
 input-template-enriched.xlsx
 input-template-preview.png
 ~$*
+firebase-debug.log
+.firebase/
