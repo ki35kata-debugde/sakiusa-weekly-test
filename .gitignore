@@ -1,0 +1,4 @@
+*.inspect.ndjson
+input-template-enriched.xlsx
+input-template-preview.png
+~$*
