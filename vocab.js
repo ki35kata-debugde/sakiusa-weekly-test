@@ -44,10 +44,41 @@ const baseImport=importSheet;importSheet=async function(file){
 async function refreshAudioStatus(){const el=$("vocabAudioStatus");if(!el)return;try{const n=await sakiAudio.count();el.textContent=n?`音声：${n}語ぶん取込済み`:"音声：未取込（音なしでも使えます）"}catch{el.textContent=""}}
 function bindAudioImport(inputId,msgId){const input=$(inputId);if(!input)return;input.onchange=async e=>{const f=e.target.files[0];if(!f)return;const msg=$(msgId);msg.textContent="音声を取り込んでいます…";try{const n=await sakiAudio.importZip(f);msg.textContent=`音声${n}ファイルを取り込みました。`;refreshAudioStatus()}catch(x){msg.textContent=`読み込めません：${x.message}`}input.value=""}}
 
+// ---- 保護者画面：単語撃退からテスト予定を追加 ----
+function parentRanges(){const m=new Map;vq().forEach(q=>{if(!m.has(q.range))m.set(q.range,{from:Infinity,to:-Infinity});const r=m.get(q.range);r.from=Math.min(r.from,Number(q.no));r.to=Math.max(r.to,Number(q.no))});return[...m.entries()]}
+function renderVocabTestAdder(){const el=$("vocabTestAdder");if(!el)return;const rs=parentRanges();
+ if(!rs.length){el.innerHTML="<h2>単語撃退からテストを追加</h2><p>先に単語帳（ターゲット1200）のExcelを取り込んでください。</p>";return}
+ el.innerHTML=`<h2>単語撃退からテストを追加</h2><p>登録済みの単語帳から範囲を選んで、英単語テストの予定として追加できます。</p><div class="v-setup-grid">
+  <label>シートから選ぶ（省略可）<select id="atRangePreset"><option value="">－ 手入力 －</option>${rs.map(([r,b])=>`<option value="${esc(r)}" data-from="${b.from}" data-to="${b.to}">${esc(r)}（No.${b.from}〜${b.to}）</option>`).join("")}</select></label>
+  <label>No.で範囲を指定<span class="v-nos"><input id="atFrom" type="number" inputmode="numeric" placeholder="開始"><span>〜</span><input id="atTo" type="number" inputmode="numeric" placeholder="終了"></span></label>
+  <label>テスト日<input id="atDate" type="date" required></label>
+  <label>テスト名（省略可）<input id="atTitle" placeholder="英単語ミニテスト"></label>
+  <div id="atCount" class="v-status"></div>
+  <button id="atAdd" class="primary">この範囲を追加する</button>
+  <p id="atMsg" class="v-status"></p>
+ </div>`;
+ function poolFor(){const from=Number($("atFrom").value)||0,to=Number($("atTo").value)||Infinity;return vq().filter(q=>Number(q.no)>=from&&Number(q.no)<=to)}
+ function updateCount(){$("atCount").textContent=`対象：${poolFor().length}語`}
+ $("atRangePreset").onchange=e=>{const o=e.target.selectedOptions[0];if(o&&o.dataset.from){$("atFrom").value=o.dataset.from;$("atTo").value=o.dataset.to}updateCount()};
+ ["atFrom","atTo"].forEach(id=>$(id).addEventListener("input",updateCount));
+ $("atAdd").onclick=()=>{const date=$("atDate").value,qs=poolFor();
+  if(!date)return $("atMsg").textContent="テスト日を選んでください。";
+  if(!qs.length)return $("atMsg").textContent="この範囲に単語がありません。";
+  const from=Math.min(...qs.map(q=>Number(q.no))),to=Math.max(...qs.map(q=>Number(q.no))),
+   title=$("atTitle").value.trim()||"英単語ミニテスト",range=`No.${from}〜${to}`,testId=`${date}-英単語`,now=new Date().toISOString();
+  for(const q of qs){const id=`w-${q.no}-${date}`,existing=data.questions.find(x=>x.id===id);
+   const fresh={id,testId,date,subject:"英単語",no:q.no,title,range,prompt:q.prompt,answer:q.answer,explanation:q.comment||"",wrong:q.wrong||[],note:"",createdAt:existing?.createdAt||now,updatedAt:now};
+   if(existing)Object.assign(existing,fresh);else data.questions.push(fresh)}
+  save();$("atMsg").textContent=`No.${from}〜${to}（${qs.length}語）を${fd(date)}のテストとして追加しました。`};
+ updateCount()}
+
 // ---- 保護者画面：単語帳の習得状況 ----
 if(document.body.classList.contains("parent-site")){
+ $("importFile").closest(".card").insertAdjacentHTML("afterend",'<div id="vocabTestAdder" class="card"></div>');
+ renderVocabTestAdder();
  $("importFile").closest(".card").insertAdjacentHTML("beforeend",'<label class="secondary">音声zipを取り込む<input id="audioZipParent" type="file" accept=".zip" hidden></label><p id="audioMsgParent"></p>');
  bindAudioImport("audioZipParent","audioMsgParent");
+ const baseImportForAdder=importSheet;importSheet=async function(file){await baseImportForAdder(file);renderVocabTestAdder()};
  const baseHist=renderHistory;renderHistory=function(){baseHist();const qs=vq();if(!qs.length)return;
   const tried=qs.filter(q=>latestOf(q.id)),ok=tried.filter(q=>latestOf(q.id).good),weak=tried.filter(q=>!latestOf(q.id).good);
   $("history").insertAdjacentHTML("beforeend",`<div class="card"><h2>単語撃退（ターゲット1200）</h2><p>登録 ${qs.length}語・挑戦済み ${tried.length}語・現在覚えている ${ok.length}語</p>${weak.length?`<p><b>苦手な単語：</b>${weak.slice(0,12).map(q=>`${esc(q.answer)}（No.${esc(q.no)}）`).join("、")}${weak.length>12?` ほか${weak.length-12}語`:""}</p>`:tried.length?"<p>覚えていない単語はありません。すばらしい！</p>":""}</div>`)};
