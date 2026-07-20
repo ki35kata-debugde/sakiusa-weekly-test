@@ -17,10 +17,10 @@ async function parseTarget(file){
   const rows=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,defval:""});
   const hi=rows.findIndex(r=>r.includes(HEAD_WORD)&&r.includes(HEAD_CLOZE));if(hi<0)continue;
   const h=rows[hi],c=label=>h.indexOf(label);
-  const cNo=h.findIndex(x=>/^No\.?$/i.test(String(x).trim())),cWord=c(HEAD_WORD),cMean=c("日本語訳"),cSent=c("英語例文"),cSentJa=c("例文の日本語訳"),cCloze=c(HEAD_CLOZE),cCom=c("一言コメント");
+  const cNo=h.findIndex(x=>/^No\.?$/i.test(String(x).trim())),cWord=c(HEAD_WORD),cMean=c("日本語訳"),cSent=c("英語例文"),cSentJa=c("例文の日本語訳"),cCloze=c(HEAD_CLOZE),cCom=c("一言コメント"),cW=[c("誤答1"),c("誤答2"),c("誤答3")];
   for(const r of rows.slice(hi+1)){
    const no=Number(r[cNo]),word=String(r[cWord]||"").trim();if(!no||!word)continue;
-   items.push({no,range:String(name),word,mean:String(r[cMean]||"").trim(),sent:String(r[cSent]||"").trim(),sentJa:String(r[cSentJa]||"").trim(),cloze:String(r[cCloze]||"").trim(),com:String(r[cCom]||"").trim()});
+   items.push({no,range:String(name),word,mean:String(r[cMean]||"").trim(),sent:String(r[cSent]||"").trim(),sentJa:String(r[cSentJa]||"").trim(),cloze:String(r[cCloze]||"").trim(),com:String(r[cCom]||"").trim(),wrong:cW.filter(i=>i>=0).map(i=>String(r[i]||"").trim()).filter(Boolean)});
   }
  }
  return items;
@@ -28,7 +28,7 @@ async function parseTarget(file){
 function upsertTarget(items){const now=new Date().toISOString();let added=0,updated=0;
  for(const it of items){
   const id=`v-${it.no}`,q=data.questions.find(x=>x.id===id);
-  const fresh={id,deck:DECK,testId:DECK_TEST,date:DECK_DATE,subject:SUBJ,no:String(it.no),title:"ターゲット1200",range:japaneseGlyphs(it.range),prompt:japaneseGlyphs(it.mean),promptSub:it.cloze,promptJa:japaneseGlyphs(it.sentJa),answer:it.word,sentence:it.sent,comment:japaneseGlyphs(it.com),explanation:japaneseGlyphs(it.com),wrong:[],note:"",audioNo:pad(it.no),createdAt:q?.createdAt||now,updatedAt:now};
+  const fresh={id,deck:DECK,testId:DECK_TEST,date:DECK_DATE,subject:SUBJ,no:String(it.no),title:"ターゲット1200",range:japaneseGlyphs(it.range),prompt:japaneseGlyphs(it.mean),promptSub:it.cloze,promptJa:japaneseGlyphs(it.sentJa),answer:it.word,sentence:it.sent,comment:japaneseGlyphs(it.com),explanation:japaneseGlyphs(it.com),wrong:it.wrong||[],note:"",audioNo:pad(it.no),createdAt:q?.createdAt||now,updatedAt:now};
   if(q){Object.assign(q,fresh);updated++}else{data.questions.push(fresh);added++}
  }
  return{added,updated}}
@@ -99,9 +99,11 @@ function vAsk(){const q=data.questions.find(x=>x.id===vs.queue[vs.index]);vs.sta
    document.querySelectorAll("#vocabBody [data-self]").forEach(b=>b.onclick=()=>{vRecord(q,b.dataset.self==="correct",b.dataset.self,b.dataset.self!=="correct");vNext()})};
  }else{
   const src=vs.poolIds&&vs.poolIds.length>=4?vq().filter(x=>vs.poolIds.includes(x.id)):vq(),
-   cands=[...new Set(src.filter(x=>x.id!==q.id).map(x=>x.answer))].filter(a=>a!==q.answer),
-   extra=[...new Set(vq().map(x=>x.answer))].filter(a=>a!==q.answer&&!cands.includes(a)),
-   picked=shuffle(cands).slice(0,3);
+   picked=[...new Set((q.wrong||[]).filter(a=>a&&a!==q.answer))].slice(0,3),
+   cands=[...new Set(src.filter(x=>x.id!==q.id).map(x=>x.answer))].filter(a=>a!==q.answer&&!picked.includes(a)),
+   extra=[...new Set(vq().map(x=>x.answer))].filter(a=>a!==q.answer&&!picked.includes(a)&&!cands.includes(a)),
+   fill=shuffle(cands);
+  while(picked.length<3&&fill.length)picked.push(fill.pop());
   while(picked.length<3&&extra.length)picked.push(extra.splice(Math.floor(Math.random()*extra.length),1)[0]);
   const ops=shuffle([q.answer,...picked].slice(0,4));
   $("vocabBody").innerHTML=`${frontHtml(q)}<div class="choices">${ops.map(x=>`<button class="choice" data-answer="${esc(x)}">${esc(x)}</button>`).join("")}</div><div id="vocabFeedback"></div>`;
