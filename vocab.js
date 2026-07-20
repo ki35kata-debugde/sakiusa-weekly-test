@@ -70,7 +70,7 @@ function renderVocabSetup(){const box=$("vocabSetup");if(!box)return;const rs=ra
   <label>No.で絞る（省略可）<span class="v-nos"><input id="vocabFrom" type="number" inputmode="numeric" placeholder="開始"><span>〜</span><input id="vocabTo" type="number" inputmode="numeric" placeholder="終了"></span></label>
   <label>やり方<select id="vocabMode"><option value="choice">4択バトル</option><option value="card">カードめくり</option></select></label>
   <label>出す順番<select id="vocabOrder"><option value="smart">覚えていない順</option><option value="no">No.順</option><option value="random">ランダム</option></select></label>
-  <label>問題数<select id="vocabLimit"><option value="10">10語</option><option value="20">20語</option><option value="all">すべて</option></select></label>
+  <label>問題数<select id="vocabLimit"><option value="10">10語</option><option value="20">20語</option><option value="50">50語</option><option value="all">すべて</option></select></label>
   <div id="vocabCount" class="v-status"></div>
   <button id="vocabStart" class="primary">挑戦する！</button>
   <label class="secondary" style="text-align:center">音声zipを取り込む<input id="audioZipChild" type="file" accept=".zip" hidden></label><p id="audioMsgChild" class="v-status"></p>
