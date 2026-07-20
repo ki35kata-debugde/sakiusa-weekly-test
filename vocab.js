@@ -111,7 +111,8 @@ function vAsk(){const q=data.questions.find(x=>x.id===vs.queue[vs.index]);vs.sta
    document.querySelectorAll("#vocabBody .choice").forEach(x=>{x.disabled=true;if(x.dataset.answer===q.answer)x.classList.add("correct")});if(!good)b.classList.add("wrong");
    sakiAudio.play(q.audioNo);vRecord(q,good,b.dataset.answer,!good,elapsed);
    $("vocabFeedback").innerHTML=`<div class="v-feedback ${good?"good":"bad"}"><h3>${good?"正解！":"おしい！"}</h3>${backHtml(q)}</div><button id="vocabNext" class="primary">次へ</button>`;
-   $("vocabNext").onclick=vNext});
+   $("vocabNext").onclick=vNext;
+   $("vocabNext").scrollIntoView({behavior:"smooth",block:"end"})});
  }}
 
 function vRecord(q,good,user,retry,elapsed=0){
